@@ -72,4 +72,5 @@ def map_dash():
 pn.extension()
 
 app = map_dash()
-server = app.show(threaded=True)
+app.servable()
+#server = app.show()

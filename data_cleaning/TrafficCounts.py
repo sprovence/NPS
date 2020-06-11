@@ -70,8 +70,7 @@ traffic_data.to_csv('nps_traffic.csv')
 traffic_data = pd.read_csv('nps_traffic.csv', index_col=0)
 
 # Set API Key and url for Google Places search
-#api_key = "AIzaSyDCXKNAc572UstcOFc2wnMXrXQDQIXmezU"
-api_key = 'AIzaSyCnGwDDnz17pzdJ2OdvAZk0WerFVhzaAf8'
+api_key = 'secret'
 url = "https://maps.googleapis.com/maps/api/place/textsearch/json?"
 
 # Merge the traffic data with location coordinates
