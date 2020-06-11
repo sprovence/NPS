@@ -170,9 +170,25 @@ regr.fit(X, Y)
 visitors_trendline = np.linspace(start=1979, stop=2030, num=2030-1979+1)
 visitors_prediction = regr.predict(visitors_trendline.reshape(-1,1))
 
+# Train the model using year as X and recreational visitors from 10 most popular
+# National parks
+national_parks = public_use_data[(public_use_data['ParkType'] == 'National Park')]
+top_ten = list(national_parks_most_used.iloc[:10].index)
+national_parks = national_parks[national_parks['ParkName'].isin(top_ten)]
+national_parks_by_year = national_parks.drop(columns=['Month']).groupby('Year').sum()
+national_parks_by_year['CampingTotal'] = national_parks_by_year[camping_columns].sum(axis=1)
+national_parks_by_year['TotalVisits'] = national_parks_by_year['CampingTotal'] + national_parks_by_year['RecreationVisits'] + national_parks_by_year['NonRecreationVisits'] + national_parks_by_year['NonRecreationOvernightStays'] + national_parks_by_year['MiscellaneousOvernightStays']
+Y = national_parks_by_year['TotalVisits'].values.reshape(-1,1)
+regr.fit(X, Y)
+
+# Make predictions
+top_ten_trendline = np.linspace(start=1979, stop=2030, num=2030-1979+1)
+top_ten_prediction = regr.predict(top_ten_trendline.reshape(-1,1))
+
 # Train the model using total number of campers per year
 Y = parks_by_year['CampingTotal'].values.reshape(-1,1)
 regr.fit(X, Y)
+
 
 # Make predictions using the testing set
 campers_trendline = np.linspace(start=1979, stop=2030, num=2030-1979+1)
