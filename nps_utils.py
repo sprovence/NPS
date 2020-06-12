@@ -265,7 +265,7 @@ def plotIndividualParkVisitors():
         park = park.groupby('Year').sum()
         # Plot the line
         p.line(x=years, y=park['RecreationVisits'], line_color=palette[color], 
-               name=name, hover_color='red')
+               line_width=2, name=name, hover_color='red')
         color+=1
     
     p.add_tools(
