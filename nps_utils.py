@@ -66,7 +66,8 @@ def addTraffic(nmap, month):
                 + '<p>Mean daily car count at this location: <strong>{}</strong></p>'.format(int(num_cars))
                 + '<p>Mean daily car count at all locations in ' + park + ': <strong>{}</strong></p>'.format(int(means[unit])) 
                 + '<p>Mean daily car count at all NPS locations : <strong>{}</strong></p>'.format(int(traffic.mean()['TrafficCountDay' + str(month)])),
-                max_width = '50%'
+                min_width = 280,
+                max_width = 280
                 )
         
         tooltip = folium.Tooltip(
