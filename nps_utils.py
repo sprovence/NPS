@@ -239,7 +239,7 @@ def plotVisitors():
     
     return p
 
-def plotVisitors2():
+def plotIndividualParkVisitors():
     public = load_public_use_data_full()
     # Only plot national parks
     nps = public[public['ParkType']=='National Park']
