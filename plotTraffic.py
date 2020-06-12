@@ -5,14 +5,18 @@ GISPandas to plot traffic counters against park bounaries
 @author: sydne
 """
 
-from nps_utils import load_public_use_data, load_traffic_data, load_geo_data, makeMap
+from nps_utils import load_parks_data, load_public_use_data, load_traffic_data, load_geo_data, makeMap
 import panel as pn
 import panel.widgets as pnw
+import pandas as pd
 
 month_dict = {'January':1, 'February':2, 'March':3, 'April':4, 'May':5, 
               'June':6, 'July':7, 'August':8, 'September':9, 'October':10,
               'November':11, 'December':12}
 
+parks = load_parks_data()
+traffic_data = load_traffic_data()
+boundaries = load_geo_data()
 publicUse = load_public_use_data()
 park_dict = dict(zip(publicUse['ParkName'].unique(), publicUse['UnitCode'].unique()))
 
@@ -20,7 +24,8 @@ def map_dash():
     """Map dashboard"""
     # Create the map
     map_pane = pn.pane.plot.Folium(sizing_mode="stretch_width")
-    map_pane.object = makeMap(month=7, unit='JOTR', density=False)
+    map_pane.object = makeMap(parks, publicUse, traffic_data, boundaries, 
+                              month=7, unit='JOTR', density=False)
 
     # Create the dropdown menus for month and visitors
     month_buttons = pnw.RadioButtonGroup(name = 'Month', 
@@ -46,7 +51,8 @@ def map_dash():
             density = True
         month = month_dict[month_buttons.value]
         unit = park_dict[park_select.value]
-        map_pane.object = makeMap(month=month, unit=unit, density=density,
+        map_pane.object = makeMap(parks, publicUse, traffic_data, boundaries, 
+                                  month=month, unit=unit, density=density,
                                   traffic=traffic_checkbox.value)
         return
     
@@ -68,8 +74,8 @@ def map_dash():
                     width_policy='fit')
     return app
 
-pn.extension()
+#pn.extension()
 
-app = map_dash()
-app.servable()
-#server = app.show()
+#app = map_dash()
+#app.servable()
+#server = app.show(threaded=True)

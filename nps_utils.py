@@ -13,11 +13,14 @@ month2days = {1:31, 2:28, 3:31, 4: 30, 5:31, 6:30, 7:31, 8:31, 9:30,
                       10:31, 11:30, 12:31}
 data_path = Path('./data/')
 
+def load_parks_data():
+    return pd.read_csv(data_path / 'parks.csv')
+
 def load_geo_data():
     fname = 'boundaries.geojson'
     with open(data_path / fname) as file:
         boundaries = geojson.load(file)
-    return fname, boundaries
+    return boundaries
     
 def load_public_use_data():
     fname = 'PublicUseStatistics2018_clean.csv'
@@ -27,11 +30,11 @@ def load_traffic_data():
     fname = 'nps_traffic_2019.csv'
     return pd.read_csv(data_path / fname, index_col=0)
 
-traffic = load_traffic_data()
-boundaries_fname, boundaries = load_geo_data()
-publicUse = load_public_use_data()
+#traffic = load_traffic_data()
+#boundaries = load_geo_data()
+#publicUse = load_public_use_data()
 
-def addTraffic(nmap, month):
+def addTraffic(nmap, traffic, month):
     #traffic = load_traffic_data()
     
     means = traffic.groupby('UnitCode').mean()['TrafficCountDay' + str(month)]
@@ -91,7 +94,8 @@ def addTraffic(nmap, month):
     return nmap
 
 
-def makeMap(month=7, unit='JOTR', density=True, traffic=True):
+def makeMap(parks, publicUse, traffic_data, boundaries, month=7, unit='JOTR', 
+            density=True, traffic=True):
     # Load in data
     #boundaries_fname, boundaries = load_geo_data()
     #publicUse = load_public_use_data()
@@ -165,7 +169,7 @@ def makeMap(month=7, unit='JOTR', density=True, traffic=True):
         ).add_to(npsmap)
     
     if traffic:
-        npsmap = addTraffic(npsmap, month=month)
+        npsmap = addTraffic(npsmap, traffic_data, month=month)
     
     
     return npsmap
