@@ -14,7 +14,7 @@ month2days = {1:31, 2:28, 3:31, 4: 30, 5:31, 6:30, 7:31, 8:31, 9:30,
 data_path = Path('./data/')
 
 def load_geo_data():
-    fname = 'boundaries0.geojson'
+    fname = 'boundaries.geojson'
     with open(data_path / fname) as file:
         boundaries = geojson.load(file)
     return fname, boundaries
