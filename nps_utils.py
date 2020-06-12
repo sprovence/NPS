@@ -14,10 +14,9 @@ month2days = {1:31, 2:28, 3:31, 4: 30, 5:31, 6:30, 7:31, 8:31, 9:30,
 data_path = Path('./data/')
 
 def load_geo_data():
-    fname = 'nps_boundaries.geojson'
+    fname = 'boundaries0.geojson'
     with open(data_path / fname) as file:
         boundaries = geojson.load(file)
-    #boundaries = add_usage_to_geojson(boundaries, data, month)
     return fname, boundaries
     
 def load_public_use_data():
@@ -27,7 +26,6 @@ def load_public_use_data():
 def load_traffic_data():
     fname = 'nps_traffic_2019.csv'
     return pd.read_csv(data_path / fname, index_col=0)
-
 
 traffic = load_traffic_data()
 boundaries_fname, boundaries = load_geo_data()
@@ -68,7 +66,7 @@ def addTraffic(nmap, month):
                 + '<p>Mean daily car count at this location: <strong>{}</strong></p>'.format(int(num_cars))
                 + '<p>Mean daily car count at all locations in ' + park + ': <strong>{}</strong></p>'.format(int(means[unit])) 
                 + '<p>Mean daily car count at all NPS locations : <strong>{}</strong></p>'.format(int(traffic.mean()['TrafficCountDay' + str(month)])),
-                max_width = '40%'
+                max_width = '50%'
                 )
         
         tooltip = folium.Tooltip(
@@ -119,7 +117,7 @@ def makeMap(month=7, unit='JOTR', density=True, traffic=True):
         #bins = list(publicUse['DailyDensity'].quantile([0, 0.2, 0.4, 0.6, 0.8, 1]))
 
         folium.Choropleth(
-                geo_data=boundaries_fname,
+                geo_data=boundaries,
                 data = data,
                 columns = ['UnitCode', 'DailyAcreagePerVisitor2018'],
                 key_on = 'feature.properties.UNIT_CODE',
@@ -138,7 +136,7 @@ def makeMap(month=7, unit='JOTR', density=True, traffic=True):
                 max(data['DailyVisitors2018'])]
 
         folium.Choropleth(
-                geo_data=boundaries_fname,
+                geo_data=boundaries,
                 data = data,
                 columns = ['UnitCode', 'DailyVisitors2018'],
                 key_on = 'feature.properties.UNIT_CODE',
@@ -177,29 +175,3 @@ def highlight_function(feature):
             'color': 'black'
             }
     
-
-def radar(df):
-    """
-    Main function to plot a radar plot
-    Input:
-        df = the dataframe to plot
-    """
-    spoke_labels = list(df)
-    N = len(spoke_labels) # The number of spokes on the polygon
-    clusters = len(df.index)
-    
-    angles = [i / float(N) * 2 * pi for i in range(N)]
-    angles += angles[:1]  # repeat the first value to close the circle
-    
-    x0, y0, r = [0.5] * 3
-    verts = [(r*np.cos(t) + x0, r*np.sin(t) + y0) for t in angles]
-    plt.subplot(111, gridspec_kw, polar=True)
-    plt.Polygon(verts, closed=True, edgecolor='k')
-    
-    
-    fig, ax = plt.subplots(figsize=(9, 9), nrows=1, ncols=1,
-                             subplot_kw=dict(projection='radar'))
-    
-    for d in range(clusters):
-        ax.plot(theta, df.iloc[d])
-        ax.fill(theta, df.iloc[d], alpha=0.25)

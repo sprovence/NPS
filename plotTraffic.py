@@ -13,8 +13,8 @@ month_dict = {'January':1, 'February':2, 'March':3, 'April':4, 'May':5,
               'June':6, 'July':7, 'August':8, 'September':9, 'October':10,
               'November':11, 'December':12}
 
-public_use = load_public_use_data()
-park_dict = dict(zip(public_use['ParkName'].unique(), public_use['UnitCode'].unique()))
+publicUse = load_public_use_data()
+park_dict = dict(zip(publicUse['ParkName'].unique(), publicUse['UnitCode'].unique()))
 
 def map_dash():
     """Map dashboard"""

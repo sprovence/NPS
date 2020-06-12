@@ -147,5 +147,4 @@ clean_data_2018.to_csv('nps_traffic_clean_2018.csv')
 
 clean_data_2019.to_csv('nps_traffic_clean_2019.csv')
 
-
     
