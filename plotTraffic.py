@@ -19,7 +19,7 @@ park_dict = dict(zip(publicUse['ParkName'].unique(), publicUse['UnitCode'].uniqu
 def map_dash():
     """Map dashboard"""
     # Create the map
-    map_pane = pn.pane.plot.Folium(sizing_mode="stretch_width", width=1200)
+    map_pane = pn.pane.plot.Folium(sizing_mode="stretch_width", width=800)
     map_pane.object = makeMap(month=7, unit='JOTR', density=False)
 
     # Create the dropdown menus for month and visitors
