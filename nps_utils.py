@@ -7,6 +7,9 @@ import geojson
 import numpy as np
 import matplotlib.pyplot as plt
 from pathlib import Path
+from bokeh.plotting import figure, output_file, show
+from bokeh.models import ColumnDataSource, HoverTool
+from bokeh.palettes import Spectral11, viridis
 
 
 month2days = {1:31, 2:28, 3:31, 4: 30, 5:31, 6:30, 7:31, 8:31, 9:30,
@@ -24,6 +27,10 @@ def load_geo_data():
     
 def load_public_use_data():
     fname = 'PublicUseStatistics2018_clean.csv'
+    return pd.read_csv(data_path / fname, index_col=0)
+
+def load_public_use_data_full():
+    fname = 'nps_public_use.csv'
     return pd.read_csv(data_path / fname, index_col=0)
 
 def load_traffic_data():
@@ -179,4 +186,94 @@ def highlight_function(feature):
             'weight': 3,
             'color': 'black'
             }
+    
+def plotVisitors():
+    public = load_public_use_data_full()
+    # Only plot national parks
+    nps = public[public['ParkType']=='National Park']
+    
+    # Create the Bokeh figure
+    p = figure(title="National Park Visitors Over Time", 
+               tools="pan,box_zoom,reset,save",
+               x_axis_label='Year', 
+               y_axis_label='Recreational Visitors',
+               x_range=(1989,2018),
+               y_range=(2E6, 1E8),
+               y_axis_type='log')
+    
+    # Create x-data
+    years = list(nps.groupby('Year').mean().index)
+    
+    # Create y-data
+    allparks = nps.groupby('Year').sum()['RecreationVisits']
+    totals = nps[nps['Year']==2018].groupby('UnitCode').sum()['RecreationVisits'].sort_values()
+    p.line(x=years, y=allparks, line_color='red', line_width=3,
+           legend_label='All National Parks', hover_color='grey')
+    
+    # Most-visited 10 parks
+    top = list(totals.index)[-10:]
+    top_parks = nps[nps['UnitCode'].isin(top)]
+    top_parks = top_parks.groupby('Year').sum()['RecreationVisits']
+    p.line(x=years, y=top_parks, line_color='blue', line_width=3,
+           legend_label='10 Most Visited National Parks (in 2018)', 
+           hover_color='grey')
+    
+    # All parks without the top 10 most visited parks
+    bottom = allparks-top_parks
+    p.line(x=years, y=bottom, line_color='purple', line_width=3,
+           legend_label='51 Least Visited National Parks (in 2018)', 
+           hover_color='grey')
+    
+    # Utah
+    utah = nps[nps['State']=='UT'].groupby('Year').sum()['RecreationVisits']
+    p.line(x=years, y=utah, line_color='orange', line_width=3,
+           legend_label='Utah "Mighty 5" Parks', 
+           hover_color='grey')
+    
+    p.legend.location = "center_left"
+    p.legend.click_policy="hide"
+    
+    p.add_tools(
+            HoverTool(tooltips=[( '(x,y)',   '($x{int},$y)' )])
+            )
+    
+    return p
+
+def plotVisitors2():
+    public = load_public_use_data_full()
+    # Only plot national parks
+    nps = public[public['ParkType']=='National Park']
+    totals = nps.groupby('UnitCode').sum()['RecreationVisits'].sort_values()
+    
+    # Create the Bokeh figure
+    p = figure(title="National Park Visitors Over Time", 
+               tools="pan,box_zoom,reset,save",
+               x_axis_label='Year', 
+               y_axis_label='Recreational Visitors',
+               x_range=(1989,2018), y_range=(0,1.2E7),
+               plot_width=700, plot_height=700)
+    
+    numlines=len(nps['UnitCode'].unique())
+    palette=viridis(numlines)
+    color=0
+    
+    for unit, visitors in totals.items():
+        park = nps[nps['UnitCode']==unit]
+        years = list(park['Year'].unique())
+        name = park['ParkName'].max()
+        # Create y-data
+        park = park.groupby('Year').sum()
+        # Plot the line
+        p.line(x=years, y=park['RecreationVisits'], line_color=palette[color], 
+               name=name, hover_color='red')
+        color+=1
+    
+    p.add_tools(
+            HoverTool(
+                    tooltips=[('Park', '$name'),
+                              ( '(x,y)',   '($x{int},$y)' )]
+                    )
+            )
+    
+    return p
     
