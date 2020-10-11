@@ -74,8 +74,8 @@ def map_dash():
                     width_policy='fit')
     return app
 
-pn.extension()
+#pn.extension()
 
-app = map_dash()
-app.servable()
-server = app.show(threaded=True)
+#app = map_dash()
+#app.servable()
+#server = app.show(threaded=True)
