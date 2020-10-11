@@ -8,3 +8,5 @@
 'PublicUseStatistics2018_clean.csv'
 'publicUseStats.py'
 'radar_chart.py'
+'plot_traffic_old.py'
+'nps_utils_old.py'

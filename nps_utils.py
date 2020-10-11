@@ -17,17 +17,27 @@ month2days = {1:31, 2:28, 3:31, 4: 30, 5:31, 6:30, 7:31, 8:31, 9:30,
 data_path = Path('./data/')
 
 def load_parks_data():
-    return pd.read_csv(data_path / 'parks.csv')
+    return pd.read_csv(data_path / 'parks.csv', index_col=0)
 
 def load_geo_data():
     fname = 'boundaries.geojson'
     with open(data_path / fname) as file:
         boundaries = geojson.load(file)
     return boundaries
+
+def load_geopd_data():
+    fname = 'boundaries.geojson'
+    return gpd.read_file(data_path / fname)
     
 def load_public_use_data():
+    fname = 'nps_public_use.csv'
+    data = pd.read_csv(data_path / fname, index_col=0)
+    return data[data['ParkType']=='National Park']
+
+def load_public_use_data_2018():
     fname = 'PublicUseStatistics2018_clean.csv'
-    return pd.read_csv(data_path / fname, index_col=0)
+    data = pd.read_csv(data_path / fname, index_col=0)
+    return data[data['ParkType']=='National Park']
 
 def load_public_use_data_full():
     fname = 'nps_public_use.csv'
@@ -37,45 +47,109 @@ def load_traffic_data():
     fname = 'nps_traffic_2019.csv'
     return pd.read_csv(data_path / fname, index_col=0)
 
-#traffic = load_traffic_data()
-#boundaries = load_geo_data()
-#publicUse = load_public_use_data()
+def get_coords(unit, parks):
+    if not parks[parks['parkCode'].str.upper() == unit].empty:
+        park_index = parks[parks['parkCode'].str.upper() == unit].index[0]
+        latLong = parks.at[park_index, 'latLong']
+        latLong = latLong.split(', ')
+        lat = float(latLong[0][4:])
+        long = float(latLong[1][5:])   
+    else:
+        lat = 33.91418525
+        long = -115.8398125
+    return lat, long
+
+def get_visitors(unit, month, publicUse):
+    return publicUse[(publicUse['Month']==month) & 
+                     (publicUse['UnitCode']==unit)]
+
+def get_bounds(unit, boundaries):
+    return boundaries[boundaries['UNIT_CODE'] == unit.upper()]
+
+def get_traffic(unit, traffic_data):
+    return traffic_data[traffic_data['UnitCode'] == unit.upper()]
+
+def makeMap(unit, month, coords, boundaries, visitors, traffic, 
+            useTraffic=True):
+    # Initialize the map at the park coordinates
+    npsmap = folium.Map(location=coords, zoom_start=9)
+    
+    # Set the bins for the Choropleth
+    bins = [0, 500, 2000, 6000, 10000, 51634] # Max daily vistors in 2018
+    
+    # Draw the choropleth (is the number of visitors high or low? Use color 
+    # representation)
+    folium.Choropleth(
+        geo_data=boundaries,
+        data = visitors,
+        columns = ['UnitCode', 'DailyVisitors2018'],
+        key_on = 'feature.properties.UNIT_CODE',
+        legend = 'Average Daily Visitors, 2018',
+        fill_color = 'YlOrRd',
+        nan_fill_color = 'black',
+        name = 'Choropleth',
+        line_weight=2,
+        bins = bins,
+        highlight = True,
+        ).add_to(npsmap)
+    
+    # Draw the geoJson (doesn't actually draw boundaries, used to create the 
+    # Tooltip functionality)
+    folium.GeoJson(
+        data=boundaries,
+        name='GeoJson',
+        style_function=lambda x: {'weight': 0, 'fillColor': '#FF69B4'},
+        highlight_function=highlight_function,
+        tooltip=folium.GeoJsonTooltip(fields=['Park Name', 
+                                              'Average Daily Visitors ' + str(month), 
+                                              'Average Acres Available per Visitor ' + str(month)], 
+                                    aliases=['Park Name', 
+                                             'Average Daily Visitors', 
+                                             'Average Acres per Visitor'],
+                                  labels=True, sticky=True, localize=True)
+        ).add_to(npsmap)
+    
+    # Draw traffic markers
+    if useTraffic:
+        npsmap = addTraffic(npsmap, traffic, month)
+    
+    return npsmap
 
 def addTraffic(nmap, traffic, month):
-    #traffic = load_traffic_data()
-    
-    means = traffic.groupby('UnitCode').mean()['TrafficCountDay' + str(month)]
-    stds = traffic.groupby('UnitCode').std()['TrafficCountDay' + str(month)]
+    # Get the mean and standard deviation of traffic at counters
+    mean = traffic.mean()['TrafficCountDay' + str(month)]
+    std = traffic.std()['TrafficCountDay' + str(month)]
     
     # Create a marker for each traffic counter
     for ind in traffic['CountID'].index:
         num_cars = traffic.loc[ind, 'TrafficCountDay' + str(month)]
-        unit = traffic.loc[ind, 'UnitCode']
         park = traffic.loc[ind, 'ParkName']
         
-        if ~np.isnan(stds[unit]):
-            if num_cars < (means[unit] - stds[unit]):
+        if ~np.isnan(std):
+            if num_cars <= (mean - 0.8*std):
                 qualifier = 'VERY LOW'
                 color = '#009933'
-            elif num_cars < (means[unit] - (stds[unit]/2.0)):
+            elif (num_cars <= (mean - 0.5*std)) and (num_cars > (mean - 0.8*std)):
                 qualifier = 'LOW'
                 color = '#8cff1a'
-            elif num_cars < (means[unit] + (stds[unit]/2.0)):
+            elif (num_cars <= (mean + 0.5*std)) and (num_cars > (mean - 0.5*std)):
                 qualifier = 'AVERAGE'
                 color = '#ffff00'
-            elif num_cars < (means[unit] + stds[unit]):
+            elif (num_cars <= (mean + 0.8*std)) and (num_cars > (mean + 0.5*std)):
                 qualifier = 'HIGH'
                 color = '#ff9900'
             else:
                 qualifier = 'VERY HIGH'
                 color = '#990000'
+        else:
+            qualifier = 'AVERAGE'
+            color = '#ffff00'
         
         
         popup = folium.Popup(
                 html='<p></strong>' + traffic.loc[ind, 'CountLocation'] + '</strong></p>'
                 + '<p>Mean daily car count at this location: <strong>{}</strong></p>'.format(int(num_cars))
-                + '<p>Mean daily car count at all locations in ' + park + ': <strong>{}</strong></p>'.format(int(means[unit])) 
-                + '<p>Mean daily car count at all NPS locations : <strong>{}</strong></p>'.format(int(traffic.mean()['TrafficCountDay' + str(month)])),
+                + '<p>Mean daily car count at all locations in ' + park + ': <strong>{}</strong></p>'.format(int(mean)),
                 min_width = 280,
                 max_width = 280
                 )
@@ -99,87 +173,6 @@ def addTraffic(nmap, traffic, month):
             ).add_to(nmap) 
     
     return nmap
-
-
-def makeMap(parks, publicUse, traffic_data, boundaries, month=7, unit='JOTR', 
-            density=True, traffic=True):
-    # Load in data
-    #boundaries_fname, boundaries = load_geo_data()
-    #publicUse = load_public_use_data()
-
-    data = publicUse[publicUse['Month']==month]
-    
-    parks = pd.read_csv(data_path / 'parks.csv')
-    if not parks[parks['parkCode'].str.upper() == unit].empty:
-        park_index = parks[parks['parkCode'].str.upper() == unit].index[0]
-        latLong = parks.at[park_index, 'latLong']
-        latLong = latLong.split(', ')
-        lat = float(latLong[0][4:])
-        long = float(latLong[1][5:])
-        zoom=9
-    else:
-        lat = 33.91418525
-        long = -115.8398125
-        zoom=9
-    
-    npsmap = folium.Map(location=[lat, long], zoom_start=zoom)
-    
-    if density:
-        bins = [0, 100, 500, 1000, 10000, max(data['DailyAcreagePerVisitor2018'])]
-        #bins = list(publicUse['DailyDensity'].quantile([0, 0.2, 0.4, 0.6, 0.8, 1]))
-
-        folium.Choropleth(
-                geo_data=boundaries,
-                data = data,
-                columns = ['UnitCode', 'DailyAcreagePerVisitor2018'],
-                key_on = 'feature.properties.UNIT_CODE',
-                legend = 'Average Acres per Visitor, 2018',
-                fill_color = 'PuRd',
-                nan_fill_color = 'black',
-                name = 'Choropleth',
-                line_weight=2,
-                bins = bins,
-                highlight = True,
-                ).add_to(npsmap)
-    else:
-        #bins = list(publicUse['DailyVisitors'].quantile([0, 0.1, 0.2, 
-        #            0.3, 0.4, 0.5, 0.6, 0.8, 1]))
-        bins = [0, 100, 500, 1000, 2000, 4000, 6000, 8000, 10000, 
-                max(data['DailyVisitors2018'])]
-
-        folium.Choropleth(
-                geo_data=boundaries,
-                data = data,
-                columns = ['UnitCode', 'DailyVisitors2018'],
-                key_on = 'feature.properties.UNIT_CODE',
-                legend = 'Average Daily Visitors, 2018',
-                fill_color = 'YlOrRd',
-                nan_fill_color = 'black',
-                name = 'Choropleth',
-                line_weight=2,
-                bins = bins,
-                highlight = True,
-                ).add_to(npsmap)
-    
-    folium.GeoJson(
-        data=boundaries,
-        name='GeoJson',
-        style_function=lambda x: {'weight': 0, 'fillColor': '#FF69B4'},
-        highlight_function=highlight_function,
-        tooltip=folium.GeoJsonTooltip(fields=['Park Name', 'Park Type',
-                                              'Average Daily Visitors ' + str(month), 
-                                              'Average Acres Available per Visitor ' + str(month)], 
-                                    aliases=['Park Name', 'Park Type', 
-                                             'Average Daily Visitors', 
-                                             'Average Acres Available Per Visitor'],
-                                  labels=True, sticky=True)
-        ).add_to(npsmap)
-    
-    if traffic:
-        npsmap = addTraffic(npsmap, traffic_data, month=month)
-    
-    
-    return npsmap
 
 def highlight_function(feature):
     return {
